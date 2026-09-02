@@ -32,7 +32,7 @@ Everything from VM creation to running services is driven by `make` targets. Sec
 │  │  node_exporter   │  │  Loki       │  │
 │  │  UFW             │  │  Prometheus │  │
 │  └──────────────────┘  │  Grafana    │  │
-│                         └─────────────┘  │
+│                        └─────────────┘  │
 └─────────────────────────────────────────┘
 ```
 
