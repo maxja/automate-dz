@@ -1,0 +1,28 @@
+# dayz-server.service — managed by Ansible, do not edit manually
+
+[Unit]
+Description=DayZ Dedicated Server
+After=network.target
+
+[Service]
+Type=simple
+User={{ dayz_server_user }}
+Group={{ dayz_server_group }}
+WorkingDirectory={{ dayz_install_dir }}
+ExecStart={{ dayz_install_dir }}/DayZServer \
+  -config={{ dayz_config_dir }}/serverDZ.cfg \
+  -port={{ dayz_server_port }} \
+  -BEpath={{ dayz_config_dir }}/battleye \
+  -profiles={{ dayz_config_dir }}/profiles \
+  -dologs \
+  -adminlog \
+  -netlog \
+  -freezecheck
+Restart=on-failure
+RestartSec={{ dayz_service_restart_sec }}
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=dayz-server
+
+[Install]
+WantedBy=multi-user.target

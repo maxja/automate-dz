@@ -1,0 +1,135 @@
+---
+# ── UFW ────────────────────────────────────────────────────────────────────────
+- name: Open DayZ ports in UFW
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port | string }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop: "{{ dayz_ufw_rules }}"
+
+# ── System user ────────────────────────────────────────────────────────────────
+- name: Create dayz system group
+  ansible.builtin.group:
+    name: "{{ dayz_server_group }}"
+    system: true
+    state: present
+
+- name: Create dayz system user
+  ansible.builtin.user:
+    name: "{{ dayz_server_user }}"
+    group: "{{ dayz_server_group }}"
+    system: true
+    shell: /usr/sbin/nologin
+    home: "{{ dayz_install_dir }}"
+    create_home: false
+    state: present
+
+# ── SteamCMD ───────────────────────────────────────────────────────────────────
+- name: Enable i386 architecture (required by SteamCMD)
+  ansible.builtin.command: dpkg --add-architecture i386
+  args:
+    creates: /var/lib/dpkg/arch # idempotency guard — re-runs only if missing
+
+- name: Install SteamCMD dependencies
+  ansible.builtin.apt:
+    name:
+      - lib32gcc-s1
+      - lib32stdc++6
+      - libsdl2-2.0-0:i386
+    state: present
+    update_cache: true
+
+- name: Create SteamCMD directory
+  ansible.builtin.file:
+    path: "{{ steamcmd_dir }}"
+    state: directory
+    owner: "{{ dayz_server_user }}"
+    group: "{{ dayz_server_group }}"
+    mode: "0755"
+
+- name: Download SteamCMD
+  ansible.builtin.get_url:
+    url: https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz
+    dest: /tmp/steamcmd_linux.tar.gz
+    mode: "0644"
+
+- name: Extract SteamCMD
+  ansible.builtin.unarchive:
+    src: /tmp/steamcmd_linux.tar.gz
+    dest: "{{ steamcmd_dir }}"
+    remote_src: true
+    creates: "{{ steamcmd_dir }}/steamcmd.sh"
+    owner: "{{ dayz_server_user }}"
+    group: "{{ dayz_server_group }}"
+
+# ── DayZ dedicated server ──────────────────────────────────────────────────────
+- name: Create DayZ install directory
+  ansible.builtin.file:
+    path: "{{ dayz_install_dir }}"
+    state: directory
+    owner: "{{ dayz_server_user }}"
+    group: "{{ dayz_server_group }}"
+    mode: "0755"
+
+- name: Create DayZ config directory
+  ansible.builtin.file:
+    path: "{{ dayz_config_dir }}"
+    state: directory
+    owner: "{{ dayz_server_user }}"
+    group: "{{ dayz_server_group }}"
+    mode: "0750"
+
+- name: Download / update DayZ server via SteamCMD
+  ansible.builtin.command: >
+    {{ steamcmd_dir }}/steamcmd.sh
+    +force_install_dir {{ dayz_install_dir }}
+    +login {{ dayz_steam_username }} {{ dayz_steam_password }}
+    +app_update {{ dayz_steam_app_id }} validate
+    +quit
+  become_user: "{{ dayz_server_user }}"
+  register: steamcmd_result
+  changed_when: "'already up to date' not in steamcmd_result.stdout | lower"
+
+# ── Configuration ──────────────────────────────────────────────────────────────
+- name: Deploy serverDZ.cfg
+  ansible.builtin.template:
+    src: serverDZ.cfg.j2
+    dest: "{{ dayz_config_dir }}/serverDZ.cfg"
+    owner: "{{ dayz_server_user }}"
+    group: "{{ dayz_server_group }}"
+    mode: "0640"
+  notify: Restart dayz-server
+
+- name: Create BattlEye directory
+  ansible.builtin.file:
+    path: "{{ dayz_config_dir }}/battleye"
+    state: directory
+    owner: "{{ dayz_server_user }}"
+    group: "{{ dayz_server_group }}"
+    mode: "0750"
+
+- name: Create profiles directory
+  ansible.builtin.file:
+    path: "{{ dayz_config_dir }}/profiles"
+    state: directory
+    owner: "{{ dayz_server_user }}"
+    group: "{{ dayz_server_group }}"
+    mode: "0750"
+
+# ── Systemd service ────────────────────────────────────────────────────────────
+- name: Deploy dayz-server systemd unit
+  ansible.builtin.template:
+    src: dayz-server.service.j2
+    dest: /etc/systemd/system/{{ dayz_service_name }}.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart dayz-server
+
+- name: Enable and start dayz-server
+  ansible.builtin.systemd:
+    name: "{{ dayz_service_name }}"
+    enabled: true
+    state: started
+    daemon_reload: true

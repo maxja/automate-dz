@@ -1,0 +1,9 @@
+---
+collections:
+  # UFW, timezone, and other general-purpose modules
+  - name: community.general
+    version: ">=9.0.0"
+
+  # systemd, sysctl, authorized_key, posix file management
+  - name: ansible.posix
+    version: ">=1.5.0"

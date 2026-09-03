@@ -1,0 +1,33 @@
+---
+# This role runs on the dedicated monitoring LXC container (observability group),
+# NOT on the game server. The LXC is provisioned by Terraform in Phase 2.
+#
+# The game server only runs lightweight exporters (node_exporter + Promtail)
+# via the telemetry_agent role.
+
+# ── UFW ────────────────────────────────────────────────────────────────────────
+- name: Open observability ports in UFW
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port | string }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop: "{{ observability_ufw_rules }}"
+
+# ── Prometheus ─────────────────────────────────────────────────────────────────
+# TODO (Phase 3): install Prometheus, configure scrape targets (game server node_exporter)
+- name: "[placeholder] Prometheus"
+  ansible.builtin.debug:
+    msg: "Prometheus {{ prometheus_version }} — implemented in Phase 3 (LXC)"
+
+# ── Loki ───────────────────────────────────────────────────────────────────────
+# TODO (Phase 3): install Loki, configure retention and storage
+- name: "[placeholder] Loki"
+  ansible.builtin.debug:
+    msg: "Loki {{ loki_version }} — implemented in Phase 3 (LXC)"
+
+# ── Grafana ────────────────────────────────────────────────────────────────────
+# TODO (Phase 3): install Grafana, provision Prometheus + Loki datasources, deploy dashboards
+- name: "[placeholder] Grafana"
+  ansible.builtin.debug:
+    msg: "Grafana {{ grafana_version }} — implemented in Phase 3 (LXC)"

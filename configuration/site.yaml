@@ -1,0 +1,37 @@
+---
+# Entry point for all configuration. Run via: make configure
+#
+# Play order matters:
+#   1. baseline        — hardens every host before anything else is installed
+#   2. dayz_server     — installs and configures the DayZ dedicated server
+#   3. telemetry_agent — deploys node_exporter + Promtail on the game server
+#                        (exporters only; no monitoring services on the game server)
+#   4. monitoring      — configures the observability stack (Loki, Prometheus, Grafana)
+#                        targets the `observability` group, which is a dedicated
+#                        Proxmox LXC container provisioned by Terraform (Phase 2+)
+
+- name: OS baseline
+  hosts: all
+  become: true
+  roles:
+    - baseline
+
+- name: DayZ dedicated server
+  hosts: game_servers
+  become: true
+  roles:
+    - dayz_server
+
+- name: Telemetry agents
+  hosts: game_servers
+  become: true
+  roles:
+    - telemetry_agent
+
+# Targets the dedicated monitoring LXC container (provisioned by Terraform in Phase 2).
+# The observability group will be empty until that LXC exists — this play is a no-op until then.
+- name: Observability stack
+  hosts: observability
+  become: true
+  roles:
+    - monitoring

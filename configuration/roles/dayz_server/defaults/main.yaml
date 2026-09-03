@@ -1,0 +1,16 @@
+---
+# Paths
+steamcmd_dir: /opt/steamcmd
+dayz_install_dir: /opt/dayz
+dayz_config_dir: /etc/dayz
+
+# System user that runs the server process
+dayz_server_user: dayz
+dayz_server_group: dayz
+
+# SteamCMD app ID for the DayZ dedicated server
+dayz_steam_app_id: "223350"
+
+# Service
+dayz_service_name: dayz-server
+dayz_service_restart_sec: 30

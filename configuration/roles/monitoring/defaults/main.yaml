@@ -1,0 +1,18 @@
+---
+grafana_version: "11.1.0"
+grafana_port: 3000
+grafana_data_dir: /var/lib/grafana
+grafana_admin_user: admin
+# grafana_admin_password should be set as a secret via group_vars or extra-vars
+
+prometheus_version: "2.53.0"
+prometheus_port: 9090
+prometheus_config_dir: /etc/prometheus
+prometheus_data_dir: /var/lib/prometheus
+prometheus_retention: 30d
+
+loki_version: "3.1.0"
+loki_port: 3100
+loki_config_dir: /etc/loki
+loki_data_dir: /var/lib/loki
+loki_retention: 744h # 31 days

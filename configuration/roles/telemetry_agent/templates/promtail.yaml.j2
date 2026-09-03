@@ -1,0 +1,30 @@
+# promtail config — managed by Ansible, do not edit manually
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: {{ promtail_positions_dir }}/positions.yaml
+
+clients:
+  - url: {{ loki_push_url }}
+
+scrape_configs:
+  - job_name: dayz-server
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: dayz-server
+          host: {{ inventory_hostname }}
+          __path__: {{ dayz_log_path }}/*.log
+
+  - job_name: system
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: system
+          host: {{ inventory_hostname }}
+          __path__: /var/log/syslog

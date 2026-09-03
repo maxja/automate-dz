@@ -22,22 +22,22 @@ Everything from VM creation to running services is driven by `make` targets. Sec
 ## Architecture
 
 ```
-┌─────────────────────────────────────────┐
-│             Proxmox Host                │
-│                                         │
-│  ┌──────────────────┐  ┌─────────────┐  │
-│  │  Game Server VM  │  │  Obs Server │  │
-│  │                  │  │     VM      │  │
-│  │  DayZ DS         │──▶  Promtail   │  │
-│  │  node_exporter   │  │  Loki       │  │
-│  │  UFW             │  │  Prometheus │  │
-│  └──────────────────┘  │  Grafana    │  │
-│                        └─────────────┘  │
-└─────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│                    Proxmox Host                      │
+│                                                      │
+│  ┌──────────────────────┐   ┌──────────────────────┐ │
+│  │    Game Server VM    │   │   Monitoring LXC     │ │
+│  │                      │   │                      │ │
+│  │  DayZ DS             │──▶│  Loki                │ │
+│  │  node_exporter   ────┼──▶│  Prometheus          │ │
+│  │  Promtail            │   │  Grafana             │ │
+│  └──────────────────────┘   └──────────────────────┘ │
+└──────────────────────────────────────────────────────┘
 ```
 
-- Game server pushes logs to Loki via **Promtail** and exposes metrics via **Prometheus node_exporter**
-- Observability server scrapes, stores, and visualizes everything via **Grafana**
+- Game server runs the DayZ DS plus two lightweight exporters: **Promtail** (ships logs) and **node_exporter** (exposes metrics)
+- A dedicated **Proxmox LXC container** runs the full observability stack: Loki, Prometheus, and Grafana
+- Nothing from the monitoring stack is installed on the game server VM
 - Log rotation is managed on both ends
 
 ---
@@ -89,20 +89,26 @@ make destroy     →  tear down all infrastructure
 Secrets are never stored in this repo. They live in 1Password and are referenced in `.env.secrets` using [secret references](https://developer.1password.com/docs/cli/secret-references/):
 
 ```sh
-# .env.secrets  (not committed — add to .gitignore)
+# .env.secrets  (not committed — covered by .gitignore)
+# Copy example.env and replace placeholders with op:// secret references.
 
 # Proxmox
-TF_VAR_proxmox_endpoint=op://Homelab/Proxmox/endpoint
-TF_VAR_proxmox_api_token=op://Homelab/Proxmox/api-token
+PROXMOX_VE_ENDPOINT=https://{proxmox_host}:8006
+PROXMOX_VE_API_TOKEN=op://Homelab/Proxmox/api-token
+TF_VAR_proxmox_endpoint=${PROXMOX_VE_ENDPOINT}
+TF_VAR_proxmox_api_token=${PROXMOX_VE_API_TOKEN}
+TF_VAR_proxmox_insecure=false
+TF_VAR_pve_node={node_name}
 TF_VAR_ssh_public_key=op://Homelab/SSH/public-key
 
-# Steam (required to download DayZ DS)
+# Steam (account must own DayZ; used by SteamCMD to download App ID 223350)
 DAYZ_STEAM_USERNAME=op://Homelab/Steam/username
 DAYZ_STEAM_PASSWORD=op://Homelab/Steam/password
 
 # DayZ server
-DAYZ_SERVER_PASSWORD=op://Homelab/DayZ Server/server-password
-DAYZ_ADMIN_PASSWORD=op://Homelab/DayZ Server/admin-password
+DAYZ_SERVER_PASSWORD=op://Homelab/DayZ Server/server-password   # player join password
+DAYZ_ADMIN_PASSWORD=op://Homelab/DayZ Server/admin-password     # in-game admin (passwordAdmin)
+DAYZ_RCON_PASSWORD=op://Homelab/DayZ Server/rcon-password       # BattlEye/RCON channel
 ```
 
 All `make` targets that need secrets are prefixed with `op run --env-file=.env.secrets --`, so secrets are resolved at runtime and never written to disk.
@@ -159,13 +165,31 @@ Provisioning variables are defined in `provisioning/variables.tf`. Key options:
 
 ## Roadmap
 
-- [x] Proxmox VM provisioning via OpenTofu
-- [x] OS bootstrap via cloud-init (SSH, user, packages)
-- [ ] Ansible: OS baseline role (UFW, SSH hardening)
-- [ ] Ansible: DayZ server role (SteamCMD, config, systemd)
-- [ ] Ansible: Observability role (Loki, Promtail, Prometheus, Grafana)
-- [ ] Grafana dashboards for game metrics and server health
-- [ ] In-game event log parsing via Promtail pipeline
-- [ ] Provider abstraction: Hetzner Cloud
-- [ ] Provider abstraction: OVH / Vultr / generic VPS
-- [ ] Dynamic inventory (Proxmox API / provider-native)
+**Phase 0 — Housekeeping**
+- [x] Secrets template (`example.env`) with 1Password references
+- [x] Makefile targets: `inventory`, `galaxy`, `clean`
+- [x] `.gitignore` covers generated files and secrets
+
+**Phase 1 — Ansible scaffolding**
+- [x] Role structure: `baseline`, `dayz_server`, `telemetry_agent`, `monitoring`
+- [x] Group vars: `game_servers`, `observability`, `all`
+- [x] `serverDZ.cfg` and systemd unit templates
+- [x] Promtail config template
+
+**Phase 2 — Observability LXC + second inventory host**
+- [ ] Terraform: Proxmox LXC container for monitoring stack
+- [ ] `make inventory` updated to include the LXC host in the `observability` group
+- [ ] Ansible: `monitoring` role implemented (Loki, Prometheus, Grafana)
+- [ ] Prometheus scrape config targeting game server `node_exporter`
+- [ ] Grafana datasources provisioned automatically (Loki + Prometheus)
+
+**Phase 3 — Dashboards and log pipelines**
+- [ ] Grafana dashboards: server health, DayZ session metrics
+- [ ] Promtail pipeline: parse DayZ admin log for in-game events (kills, connects, etc.)
+- [ ] Log rotation on both the game server and LXC
+
+**Phase 4 — Provider abstraction**
+- [ ] Refactor provisioning into modules (Proxmox-specific vs. common interface)
+- [ ] Hetzner Cloud provider module
+- [ ] OVH / Vultr / generic VPS module
+- [ ] Dynamic inventory (provider-native or Terraform-state-driven)

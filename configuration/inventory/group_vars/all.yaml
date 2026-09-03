@@ -1,0 +1,5 @@
+---
+# Variables applied to every host in the inventory.
+
+# System
+system_timezone: UTC

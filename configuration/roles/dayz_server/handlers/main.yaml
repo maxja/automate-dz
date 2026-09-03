@@ -1,0 +1,6 @@
+---
+- name: Restart dayz-server
+  ansible.builtin.systemd:
+    name: "{{ dayz_service_name }}"
+    state: restarted
+    daemon_reload: true

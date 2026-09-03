@@ -1,0 +1,29 @@
+// serverDZ.cfg — managed by Ansible, do not edit manually
+
+hostname = "{{ dayz_server_name }}";
+password = "{{ dayz_server_password }}";
+passwordAdmin = "{{ dayz_admin_password }}";
+
+maxPlayers = {{ dayz_max_players }};
+
+verifySignatures = 2;    // 0=disabled, 1=check .bikey, 2=check .bikey + .bisign
+forceSameBuild = 1;      // kick clients running a different game build
+disableVoN = 0;
+vonCodecQuality = 20;
+
+serverTime = "SystemTime";
+serverTimeAcceleration = 0;
+serverNightTimeAcceleration = 1;
+serverTimePersistent = 0;
+
+guaranteedUpdates = 1;
+loginQueueConcurrentPlayers = 5;
+loginQueueMaxPlayers = 100;
+instanceId = 1;
+storageAutoFix = 1;
+
+class Missions {
+    class DayZ {
+        template = "{{ dayz_map }}";
+    };
+};

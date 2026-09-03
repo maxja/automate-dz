@@ -1,0 +1,43 @@
+---
+# Variables for hosts in the game_servers group.
+# Secrets are injected at runtime by `op run` and read here via env lookup.
+
+# ── Steam ──────────────────────────────────────────────────────────────────────
+dayz_steam_username: "{{ lookup('env', 'DAYZ_STEAM_USERNAME') }}"
+dayz_steam_password: "{{ lookup('env', 'DAYZ_STEAM_PASSWORD') }}"
+
+# ── DayZ server ────────────────────────────────────────────────────────────────
+dayz_server_user: dayz
+dayz_install_dir: /opt/dayz
+dayz_config_dir: /etc/dayz
+
+dayz_server_port: 2302
+dayz_server_name: "DayZ Server"
+dayz_max_players: 60
+dayz_map: dayzOffline.chernarusplus
+
+dayz_server_password: "{{ lookup('env', 'DAYZ_SERVER_PASSWORD') }}"
+dayz_admin_password: "{{ lookup('env', 'DAYZ_ADMIN_PASSWORD') }}"
+dayz_rcon_password: "{{ lookup('env', 'DAYZ_RCON_PASSWORD') }}"
+
+# UFW rules opened on game servers
+dayz_ufw_rules:
+  - { port: "{{ dayz_server_port }}", proto: udp, comment: "DayZ game" }
+  - {
+      port: "{{ dayz_server_port | int + 2 }}",
+      proto: udp,
+      comment: "BattlEye",
+    }
+  - {
+      port: "{{ dayz_server_port | int + 3 }}",
+      proto: udp,
+      comment: "Steam query",
+    }
+
+# ── Telemetry agent ────────────────────────────────────────────────────────────
+node_exporter_version: "1.8.2"
+promtail_version: "3.1.0"
+
+# Address of the observability server — set at inventory or host level
+# when the obs VM exists. Referenced by Promtail's push config.
+loki_push_url: "http://{{ hostvars[groups['observability'][0]]['ansible_host'] }}:3100/loki/api/v1/push"

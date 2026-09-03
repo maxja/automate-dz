@@ -1,0 +1,61 @@
+---
+- name: Set system timezone
+  community.general.timezone:
+    name: "{{ system_timezone }}"
+
+- name: Enable UFW with default policies
+  community.general.ufw:
+    state: enabled
+    default: "{{ ufw_default_incoming }}"
+    direction: incoming
+
+- name: UFW - allow SSH
+  community.general.ufw:
+    rule: allow
+    port: "22"
+    proto: tcp
+    comment: SSH
+
+- name: UFW - open role-specific ports
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port | string }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop: "{{ ufw_extra_rules | default([]) }}"
+
+- name: Harden SSH - disable password authentication
+  ansible.builtin.lineinfile:
+    path: "{{ ssh_config_path }}"
+    regexp: "^#?PasswordAuthentication"
+    line: "PasswordAuthentication {{ ssh_password_authentication }}"
+    state: present
+    validate: sshd -t -f %s
+  notify: Restart sshd
+
+- name: Harden SSH - disable root login
+  ansible.builtin.lineinfile:
+    path: "{{ ssh_config_path }}"
+    regexp: "^#?PermitRootLogin"
+    line: "PermitRootLogin {{ ssh_permit_root_login }}"
+    state: present
+    validate: sshd -t -f %s
+  notify: Restart sshd
+
+- name: Install unattended-upgrades
+  ansible.builtin.apt:
+    name:
+      - unattended-upgrades
+      - apt-listchanges
+    state: present
+    update_cache: true
+
+- name: Enable unattended security upgrades
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+    owner: root
+    group: root
+    mode: "0644"

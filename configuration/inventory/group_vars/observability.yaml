@@ -1,0 +1,27 @@
+---
+# Variables for hosts in the observability group.
+
+# ── Ports ──────────────────────────────────────────────────────────────────────
+grafana_port: 3000
+prometheus_port: 9090
+loki_port: 3100
+
+# ── Versions ───────────────────────────────────────────────────────────────────
+grafana_version: "11.1.0"
+prometheus_version: "2.53.0"
+loki_version: "3.1.0"
+
+# ── Retention ──────────────────────────────────────────────────────────────────
+prometheus_retention: 30d
+loki_retention: 744h # 31 days
+
+# ── UFW rules opened on the obs server ────────────────────────────────────────
+observability_ufw_rules:
+  - { port: "{{ grafana_port }}", proto: tcp, comment: "Grafana UI" }
+  # Prometheus and Loki are internal — restrict to game server IPs in production
+  - {
+      port: "{{ prometheus_port }}",
+      proto: tcp,
+      comment: "Prometheus (internal)",
+    }
+  - { port: "{{ loki_port }}", proto: tcp, comment: "Loki (internal)" }
